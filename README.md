@@ -18,6 +18,7 @@
 - [Особенности реализации](#особенности-реализации)
 - [Выбор бесплатной модели](#выбор-бесплатной-модели)
 - [Предупреждение о конфиденциальности (от OpenRouter)](#предупреждение-о-конфиденциальности-от-openrouter)
+- [Тестирование](#тестирование)
 - [Демонстрация работы (скриншоты)](#демонстрация-работы-скриншоты)
 - [Структура проекта](#структура-проекта)
 
@@ -219,6 +220,39 @@ https://openrouter.ai/collections/free-models
 
 ---
 
+## Тестирование
+
+Проект покрыт автоматическими тестами на pytest. Они проверяют ключевые части системы и не требуют запущенных сервисов (Redis, RabbitMQ, OpenRouter) — всё работает локально.
+
+### Что проверяется
+
+**Auth Service (6 тестов)**
+- Правильно ли хешируются и проверяются пароли
+- Корректно ли создаются и декодируются JWT-токены
+- Работает ли полный сценарий: регистрация → вход → получение профиля
+- Правильно ли возвращаются ошибки (409 при дублировании email, 401 при неверном пароле, 401 без токена)
+
+**Bot Service (4 теста)**
+- Принимает ли бот валидный JWT
+- Отклоняет ли "мусорный" токен
+- Отклоняет ли истёкший токен
+- Правильно ли клиент OpenRouter отправляет запрос и получает ответ (без реального интернета)
+
+
+Запуск тестов:
+
+```bash
+# Auth Service
+cd auth_service
+pytest tests/ -v
+
+# Bot Service
+cd bot_service
+pytest tests/ -v
+```
+
+---
+
 ## Демонстрация работы (скриншоты)
 
 ### 1. Регистрация пользователя (Auth Service)
@@ -246,6 +280,11 @@ https://openrouter.ai/collections/free-models
 ### 5. Интерфейс RabbitMQ
 ![RabbitMQ](./screenshots/fpj_rabbitmq_itfce.png)
 
+### 6. Тестирование Auth Service
+![Тесты Auth](./screenshots/fpj_tests_auth.png)
+
+### 7. Тестирование Bot Service
+![Тесты Bot](./screenshots/fpj_tests_bot.png)
 
 ## Структура проекта
 
@@ -254,63 +293,77 @@ llm-consultation-system/
 ├── auth_service/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── deps.py              # Dependency Injection
-│   │   │   └── routes_auth.py       # Эндпоинты /auth/*
+│   │   │   ├── deps.py                 # Зависимости FastAPI (сессия БД, репозитории, usecase)
+│   │   │   └── routes_auth.py          # Эндпоинты /auth/*
 │   │   ├── core/
-│   │   │   ├── config.py            # Pydantic Settings
-│   │   │   ├── exceptions.py        # HTTP-исключения
-│   │   │   └── security.py          # JWT и bcrypt
+│   │   │   ├── config.py               # Настройки приложения (JWT, БД, окружение)
+│   │   │   ├── exceptions.py           # HTTP-исключения
+│   │   │   └── security.py             # Хеширование паролей и JWT-токены
 │   │   ├── db/
-│   │   │   ├── base.py              # Базовый класс SQLAlchemy
-│   │   │   ├── models.py            # Модель User
-│   │   │   └── session.py           # Асинхронная сессия
+│   │   │   ├── base.py                 # Базовый класс SQLAlchemy
+│   │   │   ├── models.py               # Модель User
+│   │   │   └── session.py              # Асинхронный движок SQLite и фабрика сессий
 │   │   ├── repositories/
-│   │   │   └── users.py             # Репозиторий пользователей
+│   │   │   └── users.py                # Репозиторий пользователей
 │   │   ├── schemas/
-│   │   │   ├── auth.py              # Схемы регистрации и токена
-│   │   │   └── user.py              # Публичная схема пользователя
+│   │   │   ├── auth.py                 # Схемы регистрации и токена
+│   │   │   └── user.py                 # Публичная схема пользователя
 │   │   ├── usecases/
-│   │   │   └── auth.py              # Бизнес-логика
-│   │   └── main.py                  # Точка входа FastAPI
-│   ├── .env
-│   ├── pyproject.toml
+│   │   │   └── auth.py                 # Бизнес-логика: регистрация, вход, профиль
+│   │   └── main.py                     # Точка входа FastAPI
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── conftest.py                 # Фикстуры (тестовая БД, HTTP-клиент)
+│   │   ├── test_auth_api.py            # Интеграционные тесты (регистрация, логин, /me)
+│   │   └── test_security.py            # Модульные тесты (хеширование, JWT)
+│   ├── pytest.ini                      # Конфигурация pytest
+│   ├── .env                            # Переменные окружения
+│   ├── pyproject.toml                  # Зависимости проекта (uv)
 ├── bot_service/
 │   ├── app/
 │   │   ├── bot/
-│   │   │   ├── dispatcher.py        # Bot и Dispatcher
-│   │   │   └── handlers.py          # Обработчики /token и текста
+│   │   │   ├── dispatcher.py           # Bot и Dispatcher (aiogram)
+│   │   │   └── handlers.py             # Обработчики /token и текста
 │   │   ├── core/
-│   │   │   ├── config.py            # Настройки
-│   │   │   └── jwt.py               # Проверка JWT
+│   │   │   ├── config.py               # Настройки (Telegram, Redis, Celery, OpenRouter)
+│   │   │   └── jwt.py                  # Проверка JWT
 │   │   ├── infra/
-│   │   │   ├── celery_app.py        # Конфигурация Celery
-│   │   │   └── redis.py             # Redis-клиент
+│   │   │   ├── celery_app.py           # Конфигурация Celery (RabbitMQ — брокер, Redis — backend)
+│   │   │   └── redis.py                # Подключение к Redis
 │   │   ├── services/
-│   │   │   └── openrouter_client.py # Клиент OpenRouter
+│   │   │   └── openrouter_client.py    # Клиент OpenRouter API (отправка запросов к LLM)
 │   │   ├── tasks/
-│   │   │   └── llm_tasks.py         # Celery-задача LLM
-│   │   └── main.py                  # FastAPI (health-check)
-│   ├── .env
-│   ├── .env.example
-│   ├── pyproject.toml
+│   │   │   └── llm_tasks.py            # Celery-задача : запрос к LLM и сохранение ответа
+│   │   └── main.py                     # FastAPI (health-check)
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── conftest.py                 # Фикстуры (fakeredis)
+│   │   ├── test_jwt.py                 # Тесты валидации JWT
+│   │   └── test_openrouter_client.py   # Мок-тест клиента OpenRouter (respx)
+│   ├── pytest.ini                      # Конфигурация pytest
+│   ├── .env                            # Переменные окружения (не в репозитории)
+│   ├── .env.example                    # Шаблон переменных окружения
+│   ├── pyproject.toml                  # Зависимости проекта (uv)
 ├── screenshots/
-│   ├── fpj_authorize_1.png
+│   ├── fpj_authorize_1.png             # Авторизация в Swagger
 │   ├── fpj_authorize_2.png
-│   ├── fpj_post_1.png
+│   ├── fpj_post_1.png                  # Логин
 │   ├── fpj_post_2.png
-│   ├── fpj_rabbitmq_itfce.png
-│   ├── fpj_regist_1.png
+│   ├── fpj_rabbitmq_itfce.png          # Очереди RabbitMQ
+│   ├── fpj_regist_1.png                # Регистрация
 │   ├── fpj_regist_2.png
 │   ├── fpj_regist_3.png
-│   ├── fpj_scr_bot_1.png
+│   ├── fpj_scr_bot_1.png               # Telegram-бот
 │   ├── fpj_scr_bot_2.png
 │   ├── fpj_scr_bot_3.png
 │   ├── fpj_scr_bot_4.png
 │   ├── fpj_scr_bot_5.png
 │   ├── fpj_scr_bot_6.png
 │   ├── fpj_scr_bot_7.png
-├── .gitignore
-└── README.md
+│   ├── fpj_tests_auth.png              # Тесты Auth Service
+│   ├── fpj_tests_bot.png               # Тесты Bot Service
+├── .gitignore                          # Исключения для Git
+└── README.md                           # Документация проекта
 ```
 
 *Примечание: файл `app.db` (база SQLite) создаётся автоматически при первом запуске и не включён в репозиторий.*
