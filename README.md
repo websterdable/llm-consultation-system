@@ -161,14 +161,13 @@ python -c "import asyncio; from app.bot.dispatcher import bot, dp; asyncio.run(d
 
 ## Важно: доступ к OpenRouter и VPN
 
-Сервис OpenRouter может быть недоступен с некоторых IP-адресов.
-Если при запросе к /chat возникает ошибка:
-```bash
-{
-  "detail": "Ошибка соединения с OpenRouter: All connection attempts failed"
-}
-```
-рекомендуется использовать VPN для стабильного подключения к API OpenRouter.
+Для получения API-ключа и работы сервиса может потребоваться VPN, так как OpenRouter может быть недоступен с некоторых IP-адресов.
+
+1. Перейдите на [OpenRouter](https://openrouter.ai) и зарегистрируйтесь
+2. Создайте API-ключ в разделе [Keys](https://openrouter.ai/keys)
+3. Укажите ключ в файле `bot_service/.env`
+
+Если при отправке запроса боту возникает ошибка соединения, попробуйте включить VPN и перезапустить Celery Worker.
 
 ---
 
@@ -182,7 +181,7 @@ nvidia/nemotron-3-super-120b-a12b:free
 Если модель перестала работать (ошибка 404), найдите актуальную бесплатную модель в коллекции:
 https://openrouter.ai/collections/free-models
 
-Замените значение OPENROUTER_MODEL в файле .env (bot_service) или в шаблоне .env.example (bot_service) на новое.
+Замените значение OPENROUTER_MODEL в Вашем созданном файле .env (bot_service) или в существующем шаблоне .env.example (bot_service) на новое.
 
 ---
 
